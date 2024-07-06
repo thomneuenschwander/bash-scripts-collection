@@ -26,9 +26,9 @@ O objetivo deste script é automatizar o download dos arquivos `pub.in` e `pub.o
 
 Siga os passos abaixo para usar o script e baixar automaticamente os arquivos `pub.in` e `pub.out`:
 
-### 1. Clone o Repositório
+### 1. Baixe o script
 
-Primeiro, clone este repositório para o seu ambiente local:
+Primeiro, baixe este script para o seu ambiente local:
 
 ```bash
 curl -o tp-builder.sh https://raw.githubusercontent.com/andreeluis/verde-cli/main/tp-builder.sh
