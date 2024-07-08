@@ -31,7 +31,7 @@ Siga os passos abaixo para usar o script e baixar automaticamente os arquivos `p
 Primeiro, baixe este script para o seu ambiente local:
 
 ```bash
-curl -o tp-builder.sh https://raw.githubusercontent.com/andreeluis/verde-cli/main/tp-builder.sh
+curl -o tp-builder.sh https://raw.githubusercontent.com/thomneuenschwander/bash-scripts-collection/main/tp-builder.sh
 ```
 
 ### 2. Dê Permissões de Execução ao Script
