@@ -8,13 +8,14 @@ SEARCH_CONTEST=false
 SEARCH_CONTEST_NUMBER=""
 SEARCH_TENS=false
 SEARCH_TENS_ARRAY=()
+CORE_VISUALIZE_OUTPUT=true
 
 show_usage() {
-    echo "Uso: $0 -d {all|latest} | -s <contest> | -s [ten01,ten02,...]"
+    echo "Uso: $0 -d {all|latest} | -s <contest> | -s [ten01,ten02,...] | -v"
     exit 1
 }
 
-while getopts ":d:s:" opt; do
+while getopts ":d:s:v" opt; do
     case $opt in
         d)
             case $OPTARG in
@@ -39,6 +40,9 @@ while getopts ":d:s:" opt; do
                 SEARCH_CONTEST=true
                 SEARCH_CONTEST_NUMBER="$OPTARG"
             fi
+            ;;
+        v)
+            CORE_VISUALIZE_OUTPUT=false
             ;;
         \?)
             echo "Opção inválida: -$OPTARG" >&2
@@ -114,9 +118,11 @@ download_latest() {
         new_data=$(jq --argjson new_data "$json_data" '. |= [$new_data] + .' "$json_file_name")
         echo "$new_data" > "$json_file_name"
 
-        echo "Core content \"$lottery_name\":"
-        lottery_core_vizualization "$json_data"
-        echo
+        if [ "$CORE_VISUALIZE_OUTPUT" == true ]; then
+            echo "Core content \"$lottery_name\":"
+            lottery_core_vizualization "$json_data"
+            echo
+        fi
     else
         echo "Falha no download."
     fi
@@ -133,14 +139,18 @@ search_by_contest() {
 
     if [ -n "$result" ]; then
         echo "Concurso encontrado:"
-        echo "$result" | jq
+        if [ "$CORE_VISUALIZE_OUTPUT" == true ]; then
+            lottery_core_vizualization "$result"
+        else
+            echo "$result" | jq
+        fi
     else
         echo "Concurso número $SEARCH_CONTEST_NUMBER não encontrado."
     fi
 }
 
 search_by_tens() {
-    if [ ! -e "$json_file_name" ]; then
+    if [ ! -e "$json_file_name" ];then
         echo "O arquivo $json_file_name não existe no diretório atual."
         exit 1
     fi
@@ -155,7 +165,11 @@ search_by_tens() {
 
     if [ -n "$result" ]; then
         echo "Concursos encontrados:"
-        echo "$result" | jq
+        if [ "$CORE_VISUALIZE_OUTPUT" == true ]; then
+            lottery_core_vizualization "$result"
+        else
+            echo "$result" | jq
+        fi
     else
         echo "Nenhum concurso encontrado com as dezenas [${SEARCH_TENS_ARRAY[*]}]."
     fi
