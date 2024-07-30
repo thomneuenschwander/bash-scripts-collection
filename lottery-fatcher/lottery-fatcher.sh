@@ -6,12 +6,12 @@ DOWNLOAD_ALL=false
 DOWNLOAD_LATEST=false
 SEARCH_CONTEST=false
 SEARCH_CONTEST_NUMBER=""
-SEARCH_TENS=false
-SEARCH_TENS_ARRAY=()
+SEARCH_NUMBERS=false
+SEARCH_NUMBERS_ARRAY=()
 CORE_VISUALIZE_OUTPUT=true
 
 show_usage() {
-    echo "Uso: $0 -d {all|latest} | -s <contest> | -s [ten01,ten02,...] | -v"
+    echo "Uso: $0 -d {all|latest} | -s <contest> | -s [number01,number02,...] | -v"
     exit 1
 }
 
@@ -33,9 +33,9 @@ while getopts ":d:s:v" opt; do
             ;;
         s)
             if [[ $OPTARG == \[*\] ]]; then
-                SEARCH_TENS=true
-                IFS=',' read -r -a SEARCH_TENS_ARRAY <<< "${OPTARG#[}"
-                SEARCH_TENS_ARRAY=("${SEARCH_TENS_ARRAY[@]%]}")
+                SEARCH_NUMBERS=true
+                IFS=',' read -r -a SEARCH_NUMBERS_ARRAY <<< "${OPTARG#[}"
+                SEARCH_NUMBERS_ARRAY=($(printf "%s\n" "${SEARCH_NUMBERS_ARRAY[@]%]}" | sort -n))
             else
                 SEARCH_CONTEST=true
                 SEARCH_CONTEST_NUMBER="$OPTARG"
@@ -55,49 +55,46 @@ while getopts ":d:s:v" opt; do
     esac
 done
 
-if [ "$DOWNLOAD_ALL" != true ] && [ "$DOWNLOAD_LATEST" != true ] && [ "$SEARCH_CONTEST" != true ] && [ "$SEARCH_TENS" != true ]; then
+if [ "$DOWNLOAD_ALL" != true ] && [ "$DOWNLOAD_LATEST" != true ] && [ "$SEARCH_CONTEST" != true ] && [ "$SEARCH_NUMBERS" != true ]; then
     show_usage
 fi
 
 if ! command -v jq &> /dev/null
 then
-    echo "jq não está instalado. Instale-o com 'sudo pacman -S jq'."
+    echo "jq não está instalado."
     exit 1
 fi
 
-PS3="Escolha a loteria para fazer download: "
-options=("maismilionaria" "megasena" "lotofacil" "quina" "lotomania" "timemania" "duplasena" "federal" "diadesorte" "supersete")
-select lottery_name in "${options[@]}"
-do
-    if [[ " ${options[*]} " == *" $lottery_name "* ]]; then
-        break
-    else
-        echo "Opção inválida. Tente novamente."
-    fi
-done
+select_lottery() {
+    PS3="Escolha a loteria para fazer download: "
+    options=("maismilionaria" "megasena" "lotofacil" "quina" "lotomania" "timemania" "duplasena" "federal" "diadesorte" "supersete")
+    select lottery_name in "${options[@]}"
+    do
+        if [[ " ${options[*]} " == *" $lottery_name "* ]]; then
+            break
+        else
+            echo "Opção inválida. Tente novamente."
+        fi
+    done
+}
 
-json_file_name="$lottery_name.json"
-
-lottery_core_vizualization() {
+lottery_core_visualization() {
     local json_data=$1
-
     echo "$json_data" | jq '{
         loteria: .loteria,
         concurso: .concurso,
         data: .data,
-        dezenasOrdemSorteio: .dezenasOrdemSorteio
+        dezenas: .dezenas
     }'
 }
 
 download_all() {
-    url_fatcher="${BASE_URL}${lottery_name}"
-
+    local url_fetcher="${BASE_URL}${lottery_name}"
     if [ -e "$json_file_name" ]; then
         echo "O arquivo $json_file_name já existe no diretório atual."
         exit 0
     fi
-
-    curl -o "$json_file_name" "$url_fatcher"
+    curl -o "$json_file_name" "$url_fetcher"
 }
 
 download_latest() {
@@ -105,22 +102,17 @@ download_latest() {
         echo "O arquivo $json_file_name não existe no diretório atual."
         exit 1
     fi
-
-    url_fetcher="${BASE_URL}${lottery_name}/latest"
-
+    local url_fetcher="${BASE_URL}${lottery_name}/latest"
     echo "Baixando dados da loteria $lottery_name de $url_fetcher..."
-    json_data=$(curl -s "$url_fetcher")
-
+    local json_data=$(curl -s "$url_fetcher")
     if [ $? -eq 0 ]; then
         echo "Download concluído com sucesso."
-
         echo "Adicionando o novo objeto JSON ao arquivo $json_file_name..."
-        new_data=$(jq --argjson new_data "$json_data" '. |= [$new_data] + .' "$json_file_name")
+        local new_data=$(jq --argjson new_data "$json_data" '. |= [$new_data] + .' "$json_file_name")
         echo "$new_data" > "$json_file_name"
-
         if [ "$CORE_VISUALIZE_OUTPUT" == true ]; then
             echo "Core content \"$lottery_name\":"
-            lottery_core_vizualization "$json_data"
+            lottery_core_visualization "$json_data"
             echo
         fi
     else
@@ -133,14 +125,12 @@ search_by_contest() {
         echo "O arquivo $json_file_name não existe no diretório atual."
         exit 1
     fi
-
     echo "Pesquisando pelo concurso número $SEARCH_CONTEST_NUMBER em $json_file_name..."
-    result=$(jq --arg search_contest_number "$SEARCH_CONTEST_NUMBER" '.[] | select(.concurso == ($search_contest_number | tonumber))' "$json_file_name")
-
+    local result=$(jq --arg search_contest_number "$SEARCH_CONTEST_NUMBER" '.[] | select(.concurso == ($search_contest_number | tonumber))' "$json_file_name")
     if [ -n "$result" ]; then
         echo "Concurso encontrado:"
         if [ "$CORE_VISUALIZE_OUTPUT" == true ]; then
-            lottery_core_vizualization "$result"
+            lottery_core_visualization "$result"
         else
             echo "$result" | jq
         fi
@@ -149,31 +139,31 @@ search_by_contest() {
     fi
 }
 
-search_by_tens() {
+search_by_numbers() {
     if [ ! -e "$json_file_name" ];then
         echo "O arquivo $json_file_name não existe no diretório atual."
         exit 1
     fi
-
-    echo "Pesquisando pelas dezenas sorteadas [${SEARCH_TENS_ARRAY[*]}] em $json_file_name..."
-    search_tens_array_str=$(printf ",%s" "${SEARCH_TENS_ARRAY[@]}")
-    search_tens_array_str="[${search_tens_array_str:1}]"
-    
-    result=$(jq --argjson search_tens_array "$search_tens_array_str" '
-        .[] | select((.dezenasOrdemSorteio | map(tonumber)) as $d | ($d | inside($search_tens_array)))
+    echo "Pesquisando pelas dezenas sorteadas [${SEARCH_NUMBERS_ARRAY[*]}] em $json_file_name..."
+    local search_numbers_array_str=$(printf ",%s" "${SEARCH_NUMBERS_ARRAY[@]}")
+    search_numbers_array_str="[${search_numbers_array_str:1}]"
+    local result=$(jq --argjson search_numbers_array "$search_numbers_array_str" '
+        .[] | select((.dezenas | map(tonumber)) as $d | ($d | inside($search_numbers_array)))
     ' "$json_file_name")
-
     if [ -n "$result" ]; then
         echo "Concursos encontrados:"
         if [ "$CORE_VISUALIZE_OUTPUT" == true ]; then
-            lottery_core_vizualization "$result"
+            lottery_core_visualization "$result"
         else
             echo "$result" | jq
         fi
     else
-        echo "Nenhum concurso encontrado com as dezenas [${SEARCH_TENS_ARRAY[*]}]."
+        echo "Nenhum concurso encontrado com as dezenas [${SEARCH_NUMBERS_ARRAY[*]}]."
     fi
 }
+
+select_lottery
+json_file_name="$lottery_name.json"
 
 if [ "$DOWNLOAD_ALL" == true ]; then
     download_all
@@ -187,6 +177,6 @@ if [ "$SEARCH_CONTEST" == true ]; then
     search_by_contest
 fi
 
-if [ "$SEARCH_TENS" == true ]; then
-    search_by_tens
+if [ "$SEARCH_NUMBERS" == true ]; then
+    search_by_numbers
 fi
