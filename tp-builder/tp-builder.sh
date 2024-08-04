@@ -4,6 +4,7 @@
 # GitHub: https://github.com/thomneuenschwander
 
 GITIGNORE_FILE="./.gitignore"
+REPO_URL="https://github.com/icei-pucminas/aeds2"
 
 # Função para obter a lista de arquivos e subdiretórios do repositório
 get_subdirectories_and_files() {
@@ -66,12 +67,69 @@ download_csv_files() {
     done
 }
 
-main() {
-    if [ ! -f "$GITIGNORE_FILE" ]; then
-        echo "Criando arquivo \".gitignore\". 💪🏼"
-        echo "*.class" > "$GITIGNORE_FILE"
+prepare_for_github() {
+    if ! command -v git &> /dev/null; then
+        echo "Git não está instalado. Por favor, instale o Git para continuar."
+        exit 1
     fi
 
+    if [ ! -d ".git" ]; then
+        echo "Inicializando repositório Git. 📝"
+        git init
+        if [ $? -ne 0 ]; then
+            echo "Falha ao inicializar o repositório Git. ❌"
+            exit 1
+        fi
+
+        git branch -m "main"
+
+        if [ ! -f "$GITIGNORE_FILE" ]; then
+            echo "Criando arquivo \"$GITIGNORE_FILE\". 💪🏼"
+            printf "*.class\n*.sh\n" > "$GITIGNORE_FILE"
+        fi
+
+        echo "Adicionando arquivos ao repositório Git. 📂"
+        git add .
+        if [ $? -ne 0 ]; then
+            echo "Falha ao adicionar arquivos ao índice do Git. ❌"
+            exit 1
+        fi
+
+        echo "Fazendo commit dos arquivos. 📝"
+        git commit -m "init"
+        if [ $? -ne 0 ]; then
+            echo "Falha ao fazer commit dos arquivos. ❌"
+            exit 1
+        fi
+        git remote | grep origin &> /dev/null
+        if [ $? -ne 0 ]; then
+            echo "🍵 Se ainda não fez, crie um repositório remoto no seu GitHub para os Trabalhos Práticos de AEDS II"
+            read -p "Digite a URL do repositório GitHub: " repo_url
+            echo "Configurando repositório remoto. 🌐"
+            git remote add origin "$repo_url"
+            if [ $? -ne 0 ]; then
+                echo "Falha ao adicionar o repositório remoto. ❌"
+                exit 1
+            fi
+        fi
+
+        echo "Fazendo push para o repositório remoto. 🚀"
+        git push -u origin main
+        if [ $? -ne 0 ]; then
+            echo "Falha ao fazer push para o repositório remoto. ❌"
+            exit 1
+        fi
+
+        echo "Diretório preparado e enviado para o GitHub com sucesso. 🎉"
+    else
+        echo "git"
+    fi
+}
+
+
+
+
+main() {
     echo "⭐ Selecione o número do TP atual 🤔:"
     PS3="👉 "
     select selected_directory in tp01 tp02 tp03 tp04;
@@ -81,9 +139,6 @@ main() {
     done
     
     uppercase_directory="${selected_directory^^}"
-
-    # URL do repositório
-    REPO_URL="https://github.com/icei-pucminas/aeds2"
 
     # Caminho para o diretório que contém os subdiretórios de interesse
     DIR_PATH="tps/entrada%20e%20saida/$selected_directory"
@@ -108,4 +163,19 @@ main() {
     echo "Download concluído."
 }
 
+# Processa os argumentos da linha de comando
+while getopts ":g" opt; do
+    case ${opt} in
+        g)
+            prepare_for_github
+            exit 0
+            ;;
+        \?)
+            echo "Opção inválida: -$OPTARG" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Executa a função main se nenhum argumento for passado
 main
