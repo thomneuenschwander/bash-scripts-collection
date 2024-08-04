@@ -59,6 +59,14 @@ Quando solicitado, escolha o TP desejado digitando o número:
 - `3` -> `para o tp03`
 - `4` -> `para o tp04`
 
+### 5. Preparar para GitHub
+
+Se desejar preparar o diretório para ser enviado ao GitHub, use a opção -g ao executar o script:
+
+```bash
+./tp-builder.sh -g
+```
+
 ### 📁 Estrutura de Diretórios
 
 A estrutura de diretórios criada será semelhante a:
