@@ -3,6 +3,8 @@
 # Author: Thomas Neuenschwander
 # GitHub: https://github.com/thomneuenschwander
 
+GITIGNORE_FILE="./.gitignore"
+
 # Função para obter a lista de arquivos e subdiretórios do repositório
 get_subdirectories_and_files() {
     response=$(curl -s "$API_URL")
@@ -65,6 +67,11 @@ download_csv_files() {
 }
 
 main() {
+    if [ ! -f "$GITIGNORE_FILE" ]; then
+        echo "Criando arquivo \".gitignore\". 💪🏼"
+        echo "*.class" > "$GITIGNORE_FILE"
+    fi
+
     echo "⭐ Selecione o número do TP atual 🤔:"
     PS3="👉 "
     select selected_directory in tp01 tp02 tp03 tp04;
