@@ -73,6 +73,11 @@ prepare_for_github() {
         exit 1
     fi
 
+    if [ ! -f "$GITIGNORE_FILE" ]; then
+        echo "Criando arquivo \"$GITIGNORE_FILE\". 💪🏼"
+        printf "*.class\n*.sh\n" > "$GITIGNORE_FILE"
+    fi
+
     if [ ! -d ".git" ]; then
         echo "Inicializando repositório Git. 📝"
         git init
@@ -82,11 +87,6 @@ prepare_for_github() {
         fi
 
         git branch -m "main"
-
-        if [ ! -f "$GITIGNORE_FILE" ]; then
-            echo "Criando arquivo \"$GITIGNORE_FILE\". 💪🏼"
-            printf "*.class\n*.sh\n" > "$GITIGNORE_FILE"
-        fi
 
         echo "Adicionando arquivos ao repositório Git. 📂"
         git add .
@@ -122,7 +122,7 @@ prepare_for_github() {
 
         echo "Diretório preparado e enviado para o GitHub com sucesso. 🎉"
     else
-        echo "git"
+        echo "🛑 O git ja foi inicializado nesse diretorio. $PWD/.git."
     fi
 }
 
